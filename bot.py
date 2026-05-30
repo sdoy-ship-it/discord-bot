@@ -222,11 +222,8 @@ async def on_message(message: discord.Message):
     await bot.process_commands(message)
 
 
-async def main():
-    loop = asyncio.get_event_loop()
-    loop.run_in_executor(None, run_dashboard)
-    await bot.start(DISCORD_TOKEN)
-
-
 if __name__ == "__main__":
-    asyncio.run(main())
+    import threading
+    t = threading.Thread(target=run_dashboard, daemon=True)
+    t.start()
+    bot.run(DISCORD_TOKEN)
