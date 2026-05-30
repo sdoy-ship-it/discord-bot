@@ -1,12 +1,18 @@
 import re
 import os
-import ast as py_ast
 import math
+from dotenv import load_dotenv
 from openai import AsyncOpenAI
 from .luau_parser import LuauParser
 from .stylua_formatter import format_with_stylua
 
-client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+load_dotenv()
+
+def _get_client():
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError(".env の OPENAI_API_KEY が設定されていません")
+    return AsyncOpenAI(api_key=api_key)
 
 
 class LuauDeobfuscator:
@@ -163,19 +169,12 @@ class LuauDeobfuscator:
 簡潔に200文字以内でまとめてください。"""
 
         try:
-            response = await client.responses.create(
+            c = _get_client()
+            response = await c.chat.completions.create(
                 model="gpt-4o",
-                input=prompt,
-                max_output_tokens=500,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=500,
             )
-            return response.output_text
+            return response.choices[0].message.content
         except Exception as e:
-            try:
-                response = await client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[{"role": "user", "content": prompt}],
-                    max_tokens=500,
-                )
-                return response.choices[0].message.content
-            except Exception as e2:
-                return f"AI解析エラー: {str(e2)}"
+            return f"AI解析エラー: {str(e)}"
