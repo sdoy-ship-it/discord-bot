@@ -38,9 +38,13 @@ tree = bot.tree
 @bot.event
 async def on_ready():
     print(f"Bot logged in as {bot.user} (ID: {bot.user.id})")
+    await bot.change_presence(status=discord.Status.online, activity=discord.Game("Luau Analyzer"))
     try:
-        synced = await tree.sync()
-        print(f"Synced {len(synced)} slash command(s)")
+        # 各サーバーに即時同期（グローバルは最大1時間かかるため）
+        for guild in bot.guilds:
+            tree.copy_global_to(guild=guild)
+            synced = await tree.sync(guild=guild)
+            print(f"Synced {len(synced)} command(s) to guild: {guild.name}")
     except Exception as e:
         print(f"Failed to sync commands: {e}")
 
@@ -226,4 +230,7 @@ if __name__ == "__main__":
     import threading
     t = threading.Thread(target=run_dashboard, daemon=True)
     t.start()
-    bot.run(DISCORD_TOKEN)
+    bot.run(
+        DISCORD_TOKEN,
+        log_handler=None,
+    )
