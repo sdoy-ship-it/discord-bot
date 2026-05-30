@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Luau Deobfuscator Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f0f1a;
+      color: #e0e0f0;
+      min-height: 100vh;
+    }
+    header {
+      background: linear-gradient(135deg, #1a1a3e, #2d2d6e);
+      padding: 20px 32px;
+      border-bottom: 1px solid #3a3a6e;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    header h1 { font-size: 1.5rem; font-weight: 700; color: #a0b4ff; }
+    header p { font-size: 0.85rem; color: #8888aa; margin-top: 2px; }
+    .badge {
+      background: #4a90d9;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .stat-card {
+      background: #1a1a2e;
+      border: 1px solid #2a2a4e;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    .stat-card .value { font-size: 2.2rem; font-weight: 700; color: #a0b4ff; }
+    .stat-card .label { font-size: 0.85rem; color: #8888aa; margin-top: 4px; }
+    .stat-card.danger .value { color: #ff6b6b; }
+    .stat-card.warning .value { color: #ffa94d; }
+    .stat-card.success .value { color: #69db7c; }
+    section { margin-bottom: 32px; }
+    section h2 {
+      font-size: 1.1rem;
+      color: #a0b4ff;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #2a2a4e;
+    }
+    .channels-list { display: flex; flex-wrap: wrap; gap: 10px; }
+    .channel-tag {
+      background: #2a2a4e;
+      border: 1px solid #3a3a6e;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      color: #c0c8ff;
+    }
+    .channel-tag span { color: #6888ff; font-weight: 600; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #1a1a2e;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    th {
+      background: #2a2a4e;
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 0.8rem;
+      color: #8888aa;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    td { padding: 12px 16px; border-bottom: 1px solid #1e1e3a; font-size: 0.88rem; }
+    tr:last-child td { border-bottom: none; }
+    .score-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .score-low { background: #1a3a1a; color: #69db7c; }
+    .score-med { background: #3a2a0a; color: #ffa94d; }
+    .score-high { background: #3a0a0a; color: #ff6b6b; }
+    .empty-state {
+      text-align: center;
+      padding: 48px;
+      color: #666688;
+    }
+    .empty-state p { font-size: 1rem; }
+    .empty-state small { font-size: 0.8rem; margin-top: 8px; display: block; }
+    footer {
+      text-align: center;
+      padding: 24px;
+      color: #444466;
+      font-size: 0.8rem;
+      border-top: 1px solid #1e1e3a;
+      margin-top: 32px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>🔍 Luau Deobfuscator</h1>
+      <p>Discord Bot — Web Dashboard</p>
+    </div>
+    <span class="badge">v1.0.0</span>
+  </header>
+
+  <div class="container">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="value" id="stat-total">-</div>
+        <div class="label">総解析数</div>
+      </div>
+      <div class="stat-card">
+        <div class="value" id="stat-avg">-</div>
+        <div class="label">平均難読化スコア</div>
+      </div>
+      <div class="stat-card danger">
+        <div class="value" id="stat-high">-</div>
+        <div class="label">高リスク (70+)</div>
+      </div>
+      <div class="stat-card warning">
+        <div class="value" id="stat-med">-</div>
+        <div class="label">中リスク (30-69)</div>
+      </div>
+      <div class="stat-card success">
+        <div class="value" id="stat-low">-</div>
+        <div class="label">低リスク (0-29)</div>
+      </div>
+    </div>
+
+    <section>
+      <h2>📌 設定済みチャンネル</h2>
+      <div class="channels-list">
+        {% if config %}
+          {% for guild_id, channel_id in config.items() %}
+            <div class="channel-tag">
+              Guild: <span>{{ guild_id }}</span> → Channel: <span>#{{ channel_id }}</span>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p style="color:#666688; font-size:0.9rem;">/set コマンドでチャンネルを設定してください</p>
+        {% endif %}
+      </div>
+    </section>
+
+    <section>
+      <h2>📊 解析履歴</h2>
+      {% if log %}
+        <table>
+          <thead>
+            <tr>
+              <th>日時</th>
+              <th>ファイル名</th>
+              <th>難読化スコア</th>
+              <th>loadstring</th>
+              <th>RemoteEvent</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in log %}
+            <tr>
+              <td>{{ entry.timestamp }}</td>
+              <td><code style="color:#a0b4ff">{{ entry.filename }}</code></td>
+              <td>
+                {% set s = entry.score %}
+                {% if s >= 70 %}
+                  <span class="score-badge score-high">{{ s }}/100</span>
+                {% elif s >= 30 %}
+                  <span class="score-badge score-med">{{ s }}/100</span>
+                {% else %}
+                  <span class="score-badge score-low">{{ s }}/100</span>
+                {% endif %}
+              </td>
+              <td>{{ "⚠️ 検出" if entry.has_loadstring else "−" }}</td>
+              <td>{{ "✅ 検出" if entry.has_remote_event else "−" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty-state">
+          <p>まだ解析履歴がありません</p>
+          <small>設定チャンネルに .lua / .txt ファイルを送信すると履歴が表示されます</small>
+        </div>
+      {% endif %}
+    </section>
+  </div>
+
+  <footer>Luau Deobfuscator Bot &copy; 2025 — Powered by OpenAI &amp; discord.py</footer>
+
+  <script>
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/stats');
+        const d = await res.json();
+        document.getElementById('stat-total').textContent = d.total;
+        document.getElementById('stat-avg').textContent = d.avg_score;
+        document.getElementById('stat-high').textContent = d.high_risk;
+        document.getElementById('stat-med').textContent = d.medium_risk;
+        document.getElementById('stat-low').textContent = d.low_risk;
+      } catch(e) {}
+    }
+    loadStats();
+    setInterval(loadStats, 30000);
+  </script>
+</body>
+</html>
